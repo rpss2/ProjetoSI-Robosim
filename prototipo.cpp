@@ -1,7 +1,11 @@
 #include "Aria.h"
 #include <iostream>
 
-int matriz[1001][1001];
+const int TAM_MATRIZ = 61;
+const int MATRIZ_METADE = TAM_MATRIZ / 2;
+const int INFINITO = 2147483646;
+
+int matriz[TAM_MATRIZ][TAM_MATRIZ];
 
 class ActionGo: public ArAction {
   public:
@@ -41,19 +45,43 @@ ArActionDesired *ActionGo::fire(ArActionDesired currentDesired)
 
   myDesired.reset();
 
-  if (mySonar == NULL)
-  {
-    deactivate();
-    return NULL;
-  }
+    //coordenadas do robo no mapa
+    double posRoboX = myRobot->getX();
+    double posRoboY = myRobot->getY();
 
-  printf("%lf %lf\n", myRobot->getX(), myRobot->getY());
+    //posicao na matriz do robo
+    int posMatrizRoboX = posRoboX / 510;
+    int posMatrizRoboY = posRoboY / 510;
 
-  myRobot->lock();
-  myGoto->setGoal(ArPose(3000, 2000));
-  myRobot->unlock();
+    matriz[posMatrizRoboX + MATRIZ_METADE][posMatrizRoboY + MATRIZ_METADE] = -1;
 
-  ArUtil::sleep(100);
+    for(int i = 0; i < myRobot->getNumSonar(); i++) {
+      
+      ArSensorReading *sonar = myRobot->getSonarReading(i);
+      int alcance = myRobot->getSonarRange(i);
+      
+      //coordenadas do range
+      double cordX = sonar->getX();
+      double cordY = sonar->getY();
+
+      //posicao na matriz
+      int posMatrizX = cordX / 510;
+      int posMatrizY = cordY / 510;
+
+      //preechendo na matriz os lugares alcançados pelo robo
+      if(alcance < 4990) {
+        matriz[posMatrizX + MATRIZ_METADE][posMatrizY + MATRIZ_METADE] = INFINITO;
+      } else if(matriz[posMatrizX][posMatrizY] != INFINITO) {
+        matriz[posMatrizX + MATRIZ_METADE][posMatrizY + MATRIZ_METADE] = 0;
+      }
+
+    }
+
+    myRobot->lock();
+    myGoto->setGoal(ArPose(10000, 10000));
+    myRobot->unlock();
+
+    ArUtil::sleep(100);
 
   //range = mySonar->currentReadingPolar(-70, 70) - myRobot->getRobotRadius();
   //myDesired.setVel(range);
@@ -63,7 +91,6 @@ ArActionDesired *ActionGo::fire(ArActionDesired currentDesired)
 
 int main(int argc, char**argv){
 
-  int infinity = std::numeric_limits<int>::max();
 	//-1 escolhido para representar a posição do robo
 	//tamanho do robo é 500mm, ent de cada posicao da matriz pra outra
 	//é 510mm
@@ -108,41 +135,6 @@ int main(int argc, char**argv){
   robot.addAction(&gotoPoseAction, 350);
 
   robot.enableMotors();
-
-/*  while(Aria::getRunning()) {
-
-    for(int i = 0; i < robot.getNumSonar(); i++) {
-      
-      ArSensorReading *sonar = robot.getSonarReading(i);
-      int alcance = robot.getSonarRange(i);
-      
-      //coordenadas do range
-      double cordX = sonar->getX();
-      double cordY = sonar->getY();
-
-      //posicao na matriz
-      int posMatrizX = cordX / 510;
-      int posMatrizY = cordY / 510;
-
-      //coordenadas do robo no mapa
-      double posRoboX = robot.getX();
-      double posRoboY = robot.getY();
-
-      //posicao na matriz do robo
-      int posMatrizRoboX = posRoboX / 510;
-      int posMatrizRoboY = posRoboY / 510;
-
-      matriz[posMatrizRoboX][posMatrizRoboY] = -1;
-
-      //preechendo na matriz os lugares alcançados pelo robo
-      if(alcance < 4990) {
-        matriz[posMatrizX][posMatrizY] = infinity;
-      } else if(matriz[posMatrizX][posMatrizY] != infinity) {
-        matriz[posMatrizX][posMatrizY] = 0;
-      }
-
-    }
-  }*/
 
   robot.run(true);
 
