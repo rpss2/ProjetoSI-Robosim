@@ -12,9 +12,8 @@ const int MATRIZ_METADE = TAM_MATRIZ / 2;
 const int INFINITO = 2147483646;
 
 int matriz[TAM_MATRIZ][TAM_MATRIZ];
-int inicial_x, inicial_y;
-int head;
-int final_x, final_y;
+int i_x, i_y, head;
+int f_x, f_y;
 
 class ActionGo: public ArAction {
   public:
@@ -47,19 +46,11 @@ void ActionGo::setRobot(ArRobot *robot)
       deactivate();
     }
 }
-
-double calc_dist(double x1, double y1, double x2, double y2){
-  return sqrt(((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2)));
-}
-
-ArActionDesired *ActionGo::fire(ArActionDesired currentDesired)
-{
-  double range;
-  double speed;
+ArActionDesired *ActionGo::fire(ArActionDesired currentDesired) {
 
     //coordenadas do robo no mapa
-    double posRoboX = myRobot->getX() + inicial_x;
-    double posRoboY = myRobot->getY() + inicial_y;
+    double posRoboX = myRobot->getX() + i_x;
+    double posRoboY = myRobot->getY() + i_y;
 
     //posicao na matriz do robo
     int posMatrizRoboX = posRoboX / 510;
@@ -67,12 +58,11 @@ ArActionDesired *ActionGo::fire(ArActionDesired currentDesired)
 
     matriz[posMatrizRoboX + MATRIZ_METADE][posMatrizRoboY + MATRIZ_METADE] = -1;
 
-  if(posMatrizRoboX == 10000 / 510 && posMatrizRoboY == 10000 / 510) {
-    return &myDesired;
-  }
-  myDesired.reset();
+    if(posMatrizRoboX == ((f_x - i_x) / 510) && posMatrizRoboY == ((f_y - i_y) / 510)) {
+      return &myDesired;
+    }
+    myDesired.reset();
 
-    priority_queue<pair<double,int>,  vector<pair<double,int>>, greater<pair<double,int>>> heap;
     for(int i = 0; i < myRobot->getNumSonar(); i++) {
       
       ArSensorReading *sonar = myRobot->getSonarReading(i);
@@ -91,19 +81,13 @@ ArActionDesired *ActionGo::fire(ArActionDesired currentDesired)
         matriz[posMatrizX + MATRIZ_METADE][posMatrizY + MATRIZ_METADE] = INFINITO;
       } else if(matriz[posMatrizX][posMatrizY] != INFINITO) {
         matriz[posMatrizX + MATRIZ_METADE][posMatrizY + MATRIZ_METADE] = 0;
-        double distance = calc_dist(cordX, cordY,(final_x - inicial_x), 
-          (final_y - inicial_y));
-        heap.push(make_pair(distance/myRobot->getSonarReading(i)->getRange(), i));
       }
 
     }
 
-    /*myRobot->lock();
-    myGoto->setGoal(ArPose(10000, 10000));
-    myRobot->unlock();*/
-
-    myDesired.setHeading(myRobot->getSonarReading(heap.top().second)->getSensorTh());
-    myDesired.setVel(300);
+    myRobot->lock();
+    myGoto->setGoal(ArPose(f_x, f_y));
+    myRobot->unlock();
 
     ArUtil::sleep(100);
 
@@ -113,21 +97,22 @@ ArActionDesired *ActionGo::fire(ArActionDesired currentDesired)
   return &myDesired;
 }
 
-int main(int argc, char**argv) {
+int main(int argc, char**argv){
 
-  cin >> inicial_x >> inicial_y >> head;
-  cin >> final_x >> final_y;
-
-  //-1 escolhido para representar a posição do robo
-  //tamanho do robo é 500mm, ent de cada posicao da matriz pra outra
-  //é 510mm
-  //fazer modulo (%510)
+  cin >> i_x >> i_y >> head;
+  cin >> f_x >> f_y;
 
   Aria::init();
   ArArgumentParser parser(&argc, argv);
   parser.loadDefaultArguments();
   ArRobot robot;
   ArSonarDevice sonar;
+
+  for(int i = 0; i < TAM_MATRIZ; i++) {
+    for(int j = 0; j < TAM_MATRIZ; j++) {
+      matriz[i][j] = 1;
+    }
+  }
 
   // Connect to the robot, get some initial data from it such as type and name,
   // and then load parameter files for this robot.
